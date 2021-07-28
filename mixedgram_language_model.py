@@ -1,3 +1,5 @@
+# combination of both bigram and unigram, but with a higher weight for bigram
+
 import numpy as np
 import pandas as pd
 
@@ -11,12 +13,15 @@ class BigramLanguageModel:
         self.titles = titles
         self.smoothing = smoothing
 
+        self.unigram_occurrences = {}
         self.occurrences = {}
-        self.total_word_count = 0
+        self.total_unigram_word_count = 0
+        self.total_bigram_word_count = 0
 
         for each_title in self.titles:
             for word_index in range(0, len(each_title)):
-                self.total_word_count += 1
+                ####### FOR BIGRAM CALCULATION #######
+                self.total_bigram_word_count += 1
                 # two_words could be '<s> Nano'
                 # or just '</s>' if it is the last word
                 try:
@@ -29,13 +34,34 @@ class BigramLanguageModel:
                 else:
                     self.occurrences[two_words] = 1
 
+                ####### FOR UNIGRAM CALCULATION #######
+                if(word_index == 0 or word_index == len(each_title)-1):
+                    pass
+                else:
+                    self.total_unigram_word_count +=1
+                    if(each_title[word_index] not in self.unigram_occurrences):
+                        self.unigram_occurrences[each_title[word_index]] = 1
+                    else:
+                        self.unigram_occurrences[each_title[word_index]] += 1
+
+    def calculate_unigram_probability(self, word):
+        # includes add-one smoothing so we do not return 0 for words that are not present even in the collection
+        try:
+            return self.unigram_occurrences[word] / self.total_unigram_word_count
+        except:
+            if(self.smoothing):
+                return 1 / (self.total_unigram_word_count + len(self.unigram_occurrences))
+            return 0
+
     def calculate_bigram_probability(self, pair_of_words):
         '''
             pair_of_words (STRING): can be a single word or a pair of words separated by a space 
         '''
         try:
-            return self.occurrences[pair_of_words]/self.total_word_count
+            return self.occurrences[pair_of_words]/self.total_bigram_word_count
         except:
+            if(self.smoothing):
+                return 1 / (self.total_bigram_word_count + len(self.occurrences))
             return 0
     
     def calculate_sentence_probability(self, sentence, normalize_probability=True):
@@ -97,15 +123,29 @@ def calculate_interpolated_sentence_probability(sentence, doc, collection, alpha
             processed_sentence_list.append(two_words)
 
     if(temp_list in doc.titles):
-        return 1
+        return 1, 1
+
+
+    ###### CALCULATION OF UNIGRAM SCORE ######
+    unigram_score = 1
+    query = sentence.lower().split()
+
+    for each_word in query:
+        doc_prob = alpha * doc.calculate_unigram_probability(each_word)
+        collection_prob = (1-alpha) * collection.calculate_unigram_probability(each_word)
+        unigram_score *= (doc_prob + collection_prob)
     
-    score = 1
+    ####### CALCULATION OF BIGRAM SCORE #######
+    bigram_score = 1
     for each_pair in processed_sentence_list:
         doc_prob = alpha * doc.calculate_bigram_probability(each_pair)
         collection_prob = (1-alpha) * collection.calculate_bigram_probability(each_pair)
-        score *= (doc_prob + collection_prob)
+        bigram_score *= (doc_prob + collection_prob)
 
-    return score
+    beta = 0.9
+    score = (beta * bigram_score) + (1-beta) * unigram_score
+
+    return unigram_score, bigram_score
 
 
 def read_csv_titles(file_name):
@@ -132,21 +172,37 @@ if __name__ == "__main__":
 
     smoothing = True
 
-    query = "Paper Bag Victoria Secret"
-    all_scores = []
+    query = "mens body lotion"
+    
+    normalized_scores = []
+    all_unigram_scores = []
+    all_bigram_scores = []
 
     train_titles = read_csv_titles(processed_file)
     collection_model = BigramLanguageModel(train_titles)
-
+    
+    beta = 0.9    
 
     for doc_index in range(len(train_titles)):
         current_model = BigramLanguageModel([train_titles[doc_index]], smoothing)
 
-        current_score = calculate_interpolated_sentence_probability(query, current_model, collection_model)
-        all_scores.append(current_score)
+        unigram_score, bigram_score = calculate_interpolated_sentence_probability(query, current_model, collection_model)
+        all_unigram_scores.append(unigram_score)
+        all_bigram_scores.append(bigram_score)
+
+    # normalize the unigram and bigram scores
+    s = sum(all_unigram_scores)
+    normalized_unigram = [float(i)/s for i in all_unigram_scores]
+
+    s = sum(all_bigram_scores)
+    normalized_bigram = [float(i)/s for i in all_bigram_scores]
+
+    for i in range(len(normalized_unigram)):
+        new_normalized_score = (beta * normalized_bigram[i]) + (1 - beta) * normalized_unigram[i]
+        normalized_scores.append(new_normalized_score)
     
-    top_five_indices = sorted(range(len(all_scores)), key=lambda i: all_scores[i])[-5:]
-    top_five_scores = sorted(all_scores)[-5:]
+    top_five_indices = sorted(range(len(normalized_scores)), key=lambda i: normalized_scores[i])[-5:]
+    top_five_scores = sorted(normalized_scores)[-5:]
 
     for i in range(0, 5):
         print(f"{i+1}, Index: {top_five_indices[4-i]}, Score: {top_five_scores[4-i]}")

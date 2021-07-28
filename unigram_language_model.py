@@ -8,29 +8,31 @@ class UnigramLanguageModel:
         '''
             titles: list of lists of words (e.g. [["hello", "world"], ["how", "are", "you"]])
         '''
-
-        self.titles = titles
+        
+        self.titles = []
         self.smoothing = smoothing
 
         self.word_frequency = {}
         self.total_count = 0
 
-        for each_title in self.titles:
-            for each_word in each_title:
+        for each_prod in titles:
+            new_title = []
+            for each_word in each_prod:
                 self.total_count += 1
+                new_title.append(each_word.lower())
+
                 if each_word not in self.word_frequency:
                     self.word_frequency[each_word] = 1
                 else:
                     self.word_frequency[each_word] += 1
+            
+            self.titles.append(new_title)
 
     def calculate_unigram_probability(self, word):
         try:
             return self.word_frequency[word] / self.total_count
         except:
-            if(self.smoothing):
-                return 1 / (self.total_count + len(self.word_frequency))
-            else:
-                return 0
+            return 0
 
     def calculate_sentence_probability(self, sentence, normalize_probability=True):
         '''
@@ -55,7 +57,11 @@ def calculate_interpolated_sentence_probability(sentence, doc, collection, alpha
         normalize_probability: If true then log of probability is not computed. Otherwise take log2 of the probability score.
     '''
     score = 1
-    query = sentence.split()
+    query = sentence.lower().split()
+ 
+    if query in doc.titles:
+        return 1
+
     for each_word in query:
         doc_prob = alpha * doc.calculate_unigram_probability(each_word)
         collection_prob = (1-alpha) * collection.calculate_unigram_probability(each_word)
@@ -76,7 +82,7 @@ def read_csv_titles(file_name):
 
     # TODO: pre-process the words by making them lower case
     for each_title in list_of_titles:
-        processed_titles.append(each_title.split())
+        processed_titles.append(each_title.lower().split())
     
     return processed_titles
 
@@ -84,20 +90,21 @@ if __name__ == '__main__':
     train_file = 'train.csv'
     train_titles = read_csv_titles(train_file)
 
-    smoothing=False
+    smoothing=True
 
     train_model = UnigramLanguageModel(train_titles, smoothing) # train model is our entire corpus
 
     query = "Paper Bag Victoria Secret"
-    print("Smoothing:", smoothing)
+    #print("Smoothing:", smoothing)
     all_scores = []
 
     # for each title in train.csv, we make a model for them
     # interpolated score is then calculated for each title
     # retrieve top 5 scores
 
-    for doc in train_titles:
-        current_model = UnigramLanguageModel([doc], smoothing)
+    # for doc in train_titles:
+    for doc in range(len(train_titles)):
+        current_model = UnigramLanguageModel([train_titles[doc]], smoothing)
 
         current_score = calculate_interpolated_sentence_probability(query, current_model, train_model)
         all_scores.append(current_score)
