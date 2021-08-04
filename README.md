@@ -12,10 +12,10 @@ train.csv contains the following information for each product:
 * title
 * label_group
 
-posting_id: ID of each product__
-image: file name of image of that product__
-image_phash: perceptual hash of image (refer to [Perceptual_hashing] (https://en.wikipedia.org/wiki/Perceptual_hashing) for more information)__
-title: title of product__
+posting_id: ID of each product <br />
+image: file name of image of that product <br />
+image_phash: perceptual hash of image (refer to [Perceptual_hashing] (https://en.wikipedia.org/wiki/Perceptual_hashing) for more information) <br />
+title: title of product <br />
 label_group: label group, same for similar products
 
 ## Approaches
