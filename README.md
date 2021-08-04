@@ -12,10 +12,10 @@ train.csv contains the following information for each product:
 * title
 * label_group
 
-posting_id: ID of each product
-image: file name of image of that product
-image_phash: perceptual hash of image (refer to Perceptual_hashing [https://en.wikipedia.org/wiki/Perceptual_hashing] for more information)
-title: title of product
+posting_id: ID of each product__
+image: file name of image of that product__
+image_phash: perceptual hash of image (refer to [Perceptual_hashing] (https://en.wikipedia.org/wiki/Perceptual_hashing) for more information)__
+title: title of product__
 label_group: label group, same for similar products
 
 ## Approaches
@@ -34,3 +34,6 @@ The occurrences of the words were calculated for each document and for the entir
 Similar to Unigram Language Model, the Bigram Language Model instead calculates the occurrences of pair of words and uses those to calculate the probabilities. Start and stop words were added to account for single-word documents.
 
 The Mixgram Language Model makes use of both Unigram and Bigram probabilities to calculate the final score of a document. 
+
+### Image Search
+Convolutional Neural Network was used for image search through the product images. AlexNet was the model for the neural network used. Similar looking images to the query image were returned as relevant files
